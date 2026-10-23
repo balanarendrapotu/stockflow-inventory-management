@@ -5,9 +5,9 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.db import transaction
 
-import logging
+from .forms import SignupForm
+from .models import Organization
 
-logger = logging.getLogger(__name__)
 
 def signup_view(request):
     if request.user.is_authenticated:
@@ -16,23 +16,46 @@ def signup_view(request):
     form = SignupForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
-        try:
-            with transaction.atomic():
-                user = User.objects.create_user(
-                    username=form.cleaned_data["email"],
-                    email=form.cleaned_data["email"],
-                    password=form.cleaned_data["password"],
-                )
-                Organization.objects.create(
-                    name=form.cleaned_data["organization_name"],
-                    owner=user,
-                )
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=form.cleaned_data["email"],
+                email=form.cleaned_data["email"],
+                password=form.cleaned_data["password"],
+            )
+            Organization.objects.create(
+                name=form.cleaned_data["organization_name"],
+                owner=user,
+            )
 
+        login(request, user)
+        return redirect("dashboard")
+
+    return render(request, "accounts/signup.html", {"form": form})
+
+
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+
+    if request.method == "POST":
+        email = request.POST.get("email", "").strip().lower()
+        password = request.POST.get("password", "")
+
+        user = authenticate(request, username=email, password=password)
+
+        if user is not None:
             login(request, user)
             return redirect("dashboard")
 
-        except Exception:
-            logger.exception("Signup failed")
-            raise
+        messages.error(request, "Invalid email or password.")
 
-    return render(request, "accounts/signup.html", {"form": form})
+    return render(request, "accounts/login.html")
+
+
+@login_required
+def logout_view(request):
+    if request.method == "POST":
+        logout(request)
+        return redirect("login")
+
+    return redirect("dashboard")
