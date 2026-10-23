@@ -18,6 +18,11 @@
         <p>{{ total_stock }}</p>
     </section>
 
+    <section>
+        <h2>Total Inventory Value</h2>
+        <p>₹{{ total_inventory_value|floatformat:2 }}</p>
+    </section>
+
     <h2>Low Stock Items</h2>
 
     {% for product in low_stock_products %}
